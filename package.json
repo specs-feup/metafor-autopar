@@ -1,0 +1,11 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@specs-feup/lara": "/home/onso/specs/fortran-transpiler/Fortran-JS/node_modules/@specs-feup/lara",
+    "@specs-feup/metafor": "/home/onso/specs/fortran-transpiler/Fortran-JS"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.2"
+  }
+}
