@@ -34,7 +34,7 @@ program nested_loop_example
             B(i, j) = temp + 1
             
             ! Statement S2: Writes C(i, j), Reads A(i, j)
-            C(i, j) = A(i-1, j) * 2.0
+            C(i, j) = A(i, j) * 2.0
         end do
     end do
     !DIR$ end scop

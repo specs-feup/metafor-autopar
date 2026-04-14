@@ -172,6 +172,10 @@ export default class ISLLoopBuilder {
         return leftOperand === lhsVar || rightOperand === lhsVar;
     }
 
+    public getScalars(): string[] {
+        return this.scalars;
+    }
+
     public toJSON(): object {
         return {
             domains: this.domains,

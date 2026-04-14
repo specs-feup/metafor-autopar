@@ -27,8 +27,7 @@ for (const dir of Query.search(CompilerDirective, { directiveString: "scop"})) {
             //console.log(result);
             console.log(JSON.stringify(result, null, 2));
 
-            const analysis = new DependencyAnalysis(curr.rightJp, result.detailed_dependencies);
-            analysis.setIsParallel(result.is_parallel);
+            const analysis = new DependencyAnalysis(curr.rightJp, result.detailed_dependencies, loopBuilder.getScalars());
             analysis.wrapOpenMP();
         }
 
