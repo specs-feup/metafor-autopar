@@ -9,7 +9,7 @@
     "typescript": "^6.0.2"
   },
   "scripts": {
-    "build": "tsc -b src",
+    "build": "npx tsc",
     "build:watch": "npm run build -- --watch"
   }
 }

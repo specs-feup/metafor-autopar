@@ -2,7 +2,7 @@ import Query from "@specs-feup/lara/api/weaver/Query.js";
 import { CompilerDirective, DoStatement } from "@specs-feup/metafor/api/Joinpoints.js";
 import ISLLoopBuilder from "../dist/ISLLoopBuilder.js";
 import ISLCaller from "../dist/ISLCaller.js";
-
+import DependencyAnalysis from "../dist/DependencyAnalysis.js";
 
 for (const dir of Query.search(CompilerDirective, { directiveString: "scop"})) {
 
@@ -26,6 +26,10 @@ for (const dir of Query.search(CompilerDirective, { directiveString: "scop"})) {
             console.log("hello");
             //console.log(result);
             console.log(JSON.stringify(result, null, 2));
+
+            const analysis = new DependencyAnalysis(curr.rightJp, result.detailed_dependencies);
+            analysis.setIsParallel(result.is_parallel);
+            analysis.wrapOpenMP();
         }
 
         curr = curr.rightJp;
