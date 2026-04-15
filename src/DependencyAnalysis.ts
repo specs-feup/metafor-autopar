@@ -98,15 +98,19 @@ export default class DependencyAnalysis {
         }
 
         for (const [varName, cond] of this.reductionPotentials.entries()) {
-            if (cond.RAW === 1 && cond.WAR === 1 && cond.WAW === 1) {
-                console.log(`[DependencyAnalysis] Variable ${varName} is a possible reduction variable.`);
-                console.log(cond.statement);
-                console.log(this.jp.body.executableStmts[parseInt(cond.statement.slice(1))-1]?.code);
+            const stmtJp = this.jp.body.executableStmts[parseInt(cond.statement.slice(1)) - 1];
+            const isCandidate = ISLLoopBuilder.isReductionCandidate(stmtJp as AssignmentStatement);
 
-                if (ISLLoopBuilder.isReductionCandidate(this.jp.body.executableStmts[parseInt(cond.statement.slice(1))-1] as AssignmentStatement)) {
-                    this.confirmedReductions.add(varName);
-                    console.log(`[DependencyAnalysis] Variable ${varName} is a confirmed reduction variable.`);
-                }
+            if (isCandidate && cond.RAW === 1 && cond.WAR === 1 && cond.WAW === 1) {
+                this.confirmedReductions.add(varName);
+                this.privates.delete(varName);
+
+                console.log(`[DependencyAnalysis] Variable ${varName} is a confirmed reduction variable.`);
+            }
+            else if (cond.RAW > 0) {
+                this.isParallel = false;
+
+                console.log(`[DependencyAnalysis] Parallelism broken by Scalar: ${varName} (Reduction candidate with RAW dependencies)`);
             }
         }
     }
