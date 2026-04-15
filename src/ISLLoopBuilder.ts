@@ -10,7 +10,7 @@ export default class ISLLoopBuilder {
     private parameters: string[] = [];
     private privates: string[] = [];
     private scalars: string[] = [];
-    private reductionCandidates: string[] = [];
+    //private reductionCandidates: string[] = [];
 
     private stmts: Statement[] = [];
 
@@ -85,9 +85,6 @@ export default class ISLLoopBuilder {
 
                 // THIS WILL PROBABLY NEED TO BE MOVED
                 this.stmts.push(assignment);
-                if (ISLLoopBuilder.isReductionCandidate(assignment)) {
-                    this.reductionCandidates.push(assignment.variable.code.trim());
-                }
                 statementId++;
             }
         }
@@ -153,7 +150,7 @@ export default class ISLLoopBuilder {
         return scalarRelation;
     }
 
-    private static isReductionCandidate(stmt: AssignmentStatement): boolean {
+    public static isReductionCandidate(stmt: AssignmentStatement): boolean {
         if (stmt.variable instanceof ArraySubscriptExpr) {
             return false;
         }
@@ -185,7 +182,7 @@ export default class ISLLoopBuilder {
             parameters: this.parameters,
             privates: this.privates,
             scalars: this.scalars,
-            "reduction_candidates": this.reductionCandidates
+            //"reduction_candidates": this.reductionCandidates
         };
     }
 }

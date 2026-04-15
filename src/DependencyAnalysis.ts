@@ -1,19 +1,27 @@
-import { DoStatement, OmpClause } from "@specs-feup/metafor/api/Joinpoints.js";
+import { AssignmentStatement, DoStatement, OmpClause } from "@specs-feup/metafor/api/Joinpoints.js";
 import FortranJoinPoints from "@specs-feup/metafor/api/FortranJoinPoints.js";
+import ISLLoopBuilder from "./ISLLoopBuilder.js";
 
 enum DepType {
-    RAW,
-    WAR,
-    WAW,
+    RAW = "RAW",
+    WAR = "WAR",
+    WAW = "WAW",
 }
 
 interface Dependency {
     type: DepType,
-    source: number,
-    sink: number,
+    source: string,
+    sink: string,
     var: string,
     distance: number[],
 }   
+
+interface ReductionConditions {
+    RAW: number,
+    WAR: number,
+    WAW: number,
+    statement: string,
+}
 
 export default class DependencyAnalysis {
     private deps: Dependency[] = [];
@@ -21,6 +29,9 @@ export default class DependencyAnalysis {
     private jp: DoStatement;
     private scalars: string[];
     private privates: Set<string> = new Set();
+
+    private reductionPotentials: Map<string, ReductionConditions> = new Map();
+    private confirmedReductions: Set<string> = new Set();
 
     constructor(jp: DoStatement, deps: Dependency[], scalars: string[]) {
         this.jp = jp;
@@ -41,18 +52,60 @@ export default class DependencyAnalysis {
                     
                     console.log(`[DependencyAnalysis] Parallelism broken by Array: ${dep.var}`);
                     console.log(` -> Type: ${dep.type}, Source: [${dep.source}], Sink: [${dep.sink}], Distance: [${dep.distance}]`);
-                    
-                   // break; maybe?
                 }
             }
-            if (isScalar) {
-                if (dep.type === DepType.RAW && isOuterCarried) {
-                    this.isParallel = false; 
 
-                    console.log(`[DependencyAnalysis] Parallelism broken by Scalar: ${dep.var}`);
-                    console.log(` -> Type: ${dep.type}, Source: [${dep.source}], Sink: [${dep.sink}], Distance: [${dep.distance}]`);
-                } else {
+            if (isScalar) {
+                if (isOuterCarried) {
+                    if (!this.reductionPotentials.has(dep.var)) {
+                        this.reductionPotentials.set(dep.var, {
+                            RAW: 0,
+                            WAR: 0,
+                            WAW: 0,
+                            statement: "S0",
+                        });
+                    }
+
+                    const cond = this.reductionPotentials.get(dep.var)!;
+
+                    if (dep.sink === dep.source) {
+                        cond.statement = dep.source;
+
+                        switch (dep.type) {
+                            case DepType.RAW:
+                                cond.RAW++;
+                                break;
+                            case DepType.WAR:
+                                cond.WAR++;
+                                break;
+                            case DepType.WAW:
+                                cond.WAW++;
+                                break;
+                        }
+                    }
+
+                    if (dep.source != dep.sink && dep.type == DepType.RAW) {
+                        this.isParallel = false;
+
+                        console.log(`[DependencyAnalysis] Parallelism broken by Scalar: ${dep.var} (RAW dependency)`);
+                        console.log(` -> Type: ${dep.type}, Source: [${dep.source}], Sink: [${dep.sink}], Distance: [${dep.distance}]`);
+                    }
+                }
+                else {
                     this.privates.add(dep.var);
+                }
+            }
+        }
+
+        for (const [varName, cond] of this.reductionPotentials.entries()) {
+            if (cond.RAW === 1 && cond.WAR === 1 && cond.WAW === 1) {
+                console.log(`[DependencyAnalysis] Variable ${varName} is a possible reduction variable.`);
+                console.log(cond.statement);
+                console.log(this.jp.body.executableStmts[parseInt(cond.statement.slice(1))-1]?.code);
+
+                if (ISLLoopBuilder.isReductionCandidate(this.jp.body.executableStmts[parseInt(cond.statement.slice(1))-1] as AssignmentStatement)) {
+                    this.confirmedReductions.add(varName);
+                    console.log(`[DependencyAnalysis] Variable ${varName} is a confirmed reduction variable.`);
                 }
             }
         }
