@@ -41,6 +41,13 @@ export default class DependencyAnalysis {
         this.analyze();
     }
 
+    private logDependency(dep: Dependency) {
+        const sourceStmt = this.jp.body.executableStmts[parseInt(dep.source.slice(1)) - 1];
+        const sinkStmt = this.jp.body.executableStmts[parseInt(dep.sink.slice(1)) - 1];
+
+        console.log(` -> Type: ${dep.type}, Source: [${sourceStmt?.code}], Sink: [${sinkStmt?.code}], Distance: [${dep.distance}]`);
+    }
+
     private analyze() {
         for (const dep of this.deps) {
             const isScalar = this.scalars.includes(dep.var);
@@ -51,7 +58,7 @@ export default class DependencyAnalysis {
                     this.isParallel = false;
                     
                     console.log(`[DependencyAnalysis] Parallelism broken by Array: ${dep.var}`);
-                    console.log(` -> Type: ${dep.type}, Source: [${dep.source}], Sink: [${dep.sink}], Distance: [${dep.distance}]`);
+                    this.logDependency(dep);
                 }
             }
 
@@ -88,7 +95,7 @@ export default class DependencyAnalysis {
                         this.isParallel = false;
 
                         console.log(`[DependencyAnalysis] Parallelism broken by Scalar: ${dep.var} (RAW dependency)`);
-                        console.log(` -> Type: ${dep.type}, Source: [${dep.source}], Sink: [${dep.sink}], Distance: [${dep.distance}]`);
+                        this.logDependency(dep);
                     }
                 }
                 else {
