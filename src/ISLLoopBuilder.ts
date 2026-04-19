@@ -173,6 +173,10 @@ export default class ISLLoopBuilder {
         return this.scalars;
     }
 
+    public getPrivates(): string[] {
+        return this.privates;
+    }
+
     public toJSON(): object {
         return {
             domains: this.domains,

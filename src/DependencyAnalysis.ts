@@ -1,6 +1,7 @@
-import { AssignmentStatement, DoStatement, OmpClause } from "@specs-feup/metafor/api/Joinpoints.js";
+import { AssignmentStatement, DoStatement, OmpClause, ProgramUnit, UseStatement } from "@specs-feup/metafor/api/Joinpoints.js";
 import FortranJoinPoints from "@specs-feup/metafor/api/FortranJoinPoints.js";
 import ISLLoopBuilder from "./ISLLoopBuilder.js";
+import Query from "@specs-feup/lara/api/weaver/Query.js";
 
 enum DepType {
     RAW = "RAW",
@@ -33,10 +34,14 @@ export default class DependencyAnalysis {
     private reductionPotentials: Map<string, ReductionConditions> = new Map();
     private confirmedReductions: Set<string> = new Set();
 
-    constructor(jp: DoStatement, deps: Dependency[], scalars: string[]) {
+    constructor(jp: DoStatement, deps: Dependency[], scalars: string[], privates: string[]) {
         this.jp = jp;
         this.deps = deps;
         this.scalars = scalars;
+
+        for (const priv of privates) {
+            this.privates.add(priv);
+        }
 
         this.analyze();
     }
@@ -145,6 +150,23 @@ export default class DependencyAnalysis {
 
             this.jp.replaceWith(pragma);
             pragma.setLoop(tempJp);
+
+            //Insert "use omp_lib if absent"
+
+            const programUnit = this.jp.getAncestor("programUnit") as ProgramUnit;
+            let hasOmpLib = false;
+
+            for (const useStmt of Query.searchFrom(programUnit.specification, UseStatement)) {
+                if (useStmt.moduleName === "omp_lib") {
+                    hasOmpLib = true;
+                    break;
+                }
+            }
+
+            if (!hasOmpLib) {
+                const ompLibUse = FortranJoinPoints.useStatement("omp_lib");
+                programUnit.specification.addUseStmt(ompLibUse);
+            }
         } else {
             //console.log(`[DependencyAnalysis] Loop at line ${this.jp.line} is sequential.`);
         }

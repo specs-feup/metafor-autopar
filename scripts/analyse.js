@@ -6,7 +6,10 @@ import DependencyAnalysis from "../dist/DependencyAnalysis.js";
 
 for (const dir of Query.search(CompilerDirective, { directiveString: "scop"})) {
 
+    console.log("THIS HAPPENED");
     let curr = dir;
+
+    console.log(curr.rightJp);
 
     while (curr.rightJp) {
         if (curr.rightJp instanceof CompilerDirective && curr.rightJp.directiveString === "end scop") {
@@ -27,7 +30,7 @@ for (const dir of Query.search(CompilerDirective, { directiveString: "scop"})) {
             //console.log(result);
             console.log(JSON.stringify(result, null, 2));
 
-            const analysis = new DependencyAnalysis(curr.rightJp, result.detailed_dependencies, loopBuilder.getScalars());
+            const analysis = new DependencyAnalysis(curr.rightJp, result.detailed_dependencies, loopBuilder.getScalars(), loopBuilder.getPrivates());
             analysis.wrapOpenMP();
         }
 
