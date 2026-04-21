@@ -1,4 +1,4 @@
-import { AssignmentStatement, DoStatement, OmpClause, ProgramUnit, UseStatement } from "@specs-feup/metafor/api/Joinpoints.js";
+import { AssignmentStatement, DoStatement, OmpClause, ProgramUnit, Statement, UseStatement } from "@specs-feup/metafor/api/Joinpoints.js";
 import FortranJoinPoints from "@specs-feup/metafor/api/FortranJoinPoints.js";
 import ISLLoopBuilder from "./ISLLoopBuilder.js";
 import Query from "@specs-feup/lara/api/weaver/Query.js";
@@ -30,14 +30,16 @@ export default class DependencyAnalysis {
     private jp: DoStatement;
     private scalars: string[];
     private privates: Set<string> = new Set();
+    private statements: Statement[] = [];
 
     private reductionPotentials: Map<string, ReductionConditions> = new Map();
     private confirmedReductions: Set<string> = new Set();
 
-    constructor(jp: DoStatement, deps: Dependency[], scalars: string[], privates: string[]) {
+    constructor(jp: DoStatement, deps: Dependency[], scalars: string[], privates: string[], statements: Statement[]) {
         this.jp = jp;
         this.deps = deps;
         this.scalars = scalars;
+        this.statements = statements;
 
         for (const priv of privates) {
             this.privates.add(priv);
@@ -47,8 +49,8 @@ export default class DependencyAnalysis {
     }
 
     private logDependency(dep: Dependency) {
-        const sourceStmt = this.jp.body.executableStmts[parseInt(dep.source.slice(1)) - 1];
-        const sinkStmt = this.jp.body.executableStmts[parseInt(dep.sink.slice(1)) - 1];
+        const sourceStmt = this.statements[parseInt(dep.source.slice(1)) - 1];
+        const sinkStmt = this.statements[parseInt(dep.sink.slice(1)) - 1];
 
         console.log(` -> Type: ${dep.type}, Source: [${sourceStmt?.code}], Sink: [${sinkStmt?.code}], Distance: [${dep.distance}]`);
     }
@@ -110,7 +112,7 @@ export default class DependencyAnalysis {
         }
 
         for (const [varName, cond] of this.reductionPotentials.entries()) {
-            const stmtJp = this.jp.body.executableStmts[parseInt(cond.statement.slice(1)) - 1];
+            const stmtJp = this.statements[parseInt(cond.statement.slice(1)) - 1];
             const isCandidate = ISLLoopBuilder.isReductionCandidate(stmtJp as AssignmentStatement);
 
             if (isCandidate && cond.RAW === 1 && cond.WAR === 1 && cond.WAW === 1) {

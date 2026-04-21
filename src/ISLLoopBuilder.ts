@@ -153,6 +153,10 @@ export default class ISLLoopBuilder {
         return this.privates;
     }
 
+    public getStatements(): Statement[] {
+        return this.stmts;
+    }
+
     public toJSON(): object {
         return {
             domains: this.domains,
