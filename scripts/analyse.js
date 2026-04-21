@@ -15,25 +15,35 @@ async function analyseLoopNest(jp) {
     console.log(JSON.stringify(result, null, 2));
 
     const analysis = new DependencyAnalysis(jp, result.detailed_dependencies, loopBuilder.getScalars(), loopBuilder.getPrivates(), loopBuilder.getStatements());
-    analysis.wrapOpenMP();
+    return analysis.wrapOpenMP();
+}
+
+async function recursiveParallelize(loopJp) { 
+    const wasParallelized = await analyseLoopNest(loopJp);
+
+    if (wasParallelized) {
+        console.log(`   [SUCCESS] Parallelized outer loop.`);
+    } else {
+        console.log(`   [FAIL] Outer loop is sequential. Checking inner loops...`);
+        
+        for (const child of loopJp.body.children) {
+            if (child instanceof DoStatement) {
+                await recursiveParallelize(child);
+            }
+        }
+    }
 }
 
 for (const dir of Query.search(CompilerDirective, { directiveString: "scop"})) {
 
-    console.log("THIS HAPPENED");
     let curr = dir;
-
-    console.log(curr.rightJp);
-
     while (curr.rightJp) {
         if (curr.rightJp instanceof CompilerDirective && curr.rightJp.directiveString === "end scop") {
             break;
         }
-
-        console.log(DoStatement.name);
-
+        
         if (curr.rightJp instanceof DoStatement) {
-            analyseLoopNest(curr.rightJp);
+            await recursiveParallelize(curr.rightJp);
         }
 
         curr = curr.rightJp;

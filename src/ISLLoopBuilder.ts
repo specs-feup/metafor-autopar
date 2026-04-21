@@ -1,3 +1,4 @@
+import Query from "@specs-feup/lara/api/weaver/Query.js";
 import { Statement, DoStatement, DataRef, Expr, RangeLoopControl, ActionStatement, AssignmentStatement, ArraySubscriptExpr, BinaryOperator } from "@specs-feup/metafor/api/Joinpoints.js";
 
 export default class ISLLoopBuilder {
@@ -18,8 +19,8 @@ export default class ISLLoopBuilder {
     }
 
     private processLoopBound(bound: Expr): string {
-        if (bound instanceof DataRef) {
-            const code = bound.code.trim();
+        for (const ref of Query.searchFromInclusive(bound, DataRef)) {
+            const code = ref.code.trim();
             if (!this.parameters.includes(code)) this.parameters.push(code);
         }
         return bound.code.trim();
