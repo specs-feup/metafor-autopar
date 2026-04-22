@@ -56,7 +56,6 @@ export default class DependencyAnalysis {
     }
 
     private analyze() {
-        console.log(this.deps);
         for (const dep of this.deps) {
             const isScalar = this.scalars.includes(dep.var);
             const isOuterCarried = dep.distance.length > 0 && dep.distance[0] !== 0;

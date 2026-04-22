@@ -69,7 +69,13 @@ export default class ISLLoopBuilder {
                     this.writes.push(ISLLoopBuilder.buildAccessRelation(assignment.variable as ArraySubscriptExpr, loopInfos, statementId));
                 } else {
                     const varName = assignment.variable.code.trim();
+
+                    if (loopInfos.map(l => l.var).includes(varName)) {
+                        continue;
+                    }
+
                     if (!this.scalars.includes(varName)) this.scalars.push(varName);
+                    if (this.parameters.includes(varName)) this.parameters = this.parameters.filter(p => p !== varName);
                     this.writes.push(ISLLoopBuilder.buildScalarRelation(assignment.variable as DataRef, loopInfos, statementId));
                 }
 
@@ -78,7 +84,12 @@ export default class ISLLoopBuilder {
                         this.reads.push(ISLLoopBuilder.buildAccessRelation(read as ArraySubscriptExpr, loopInfos, statementId));
                     } else if (!(read.parent instanceof ArraySubscriptExpr)) {
                         const varName = read.code.trim();
-                        if (!this.scalars.includes(varName)) this.scalars.push(varName);
+
+                        if (loopInfos.map(l => l.var).includes(varName)) {
+                            continue;
+                        }
+
+                        if (!this.scalars.includes(varName) && !this.parameters.includes(varName)) this.parameters.push(varName);
                         this.reads.push(ISLLoopBuilder.buildScalarRelation(read, loopInfos, statementId));
                     }
                 }
