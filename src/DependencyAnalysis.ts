@@ -57,74 +57,56 @@ export default class DependencyAnalysis {
 
     private analyze() {
         for (const dep of this.deps) {
-            const isScalar = this.scalars.includes(dep.var);
-            const isOuterCarried = dep.distance.length > 0 && dep.distance[0] !== 0;
-
-            if (!isScalar) {
-                if (isOuterCarried) {
-                    this.isParallel = false;
-                    
-                    console.log(`[DependencyAnalysis] Parallelism broken by Array: ${dep.var}`);
-                    this.logDependency(dep);
-                }
-            }
-
-            if (isScalar) {
-                if (isOuterCarried) {
+            const loopIndex = 0; // Current loop level
+            const isOuterCarried = dep.distance.length > loopIndex && dep.distance[loopIndex] !== 0;
+    
+            if (isOuterCarried) {
+                // Identify if the statement is a reduction (e.g., y(i) = y(i) + ...)
+                const stmtJp = this.statements[parseInt(dep.source.slice(1)) - 1];
+                const isCandidate = ISLLoopBuilder.isReductionCandidate(stmtJp as AssignmentStatement);
+    
+                // If it's a self-dependency on a candidate statement, we track it
+                if (isCandidate && dep.sink === dep.source) {
                     if (!this.reductionPotentials.has(dep.var)) {
                         this.reductionPotentials.set(dep.var, {
-                            RAW: 0,
-                            WAR: 0,
-                            WAW: 0,
-                            statement: "S0",
+                            RAW: 0, WAR: 0, WAW: 0,
+                            statement: dep.source,
                         });
                     }
-
+    
                     const cond = this.reductionPotentials.get(dep.var)!;
-
-                    if (dep.sink === dep.source) {
-                        cond.statement = dep.source;
-
-                        switch (dep.type) {
-                            case DepType.RAW:
-                                cond.RAW++;
-                                break;
-                            case DepType.WAR:
-                                cond.WAR++;
-                                break;
-                            case DepType.WAW:
-                                cond.WAW++;
-                                break;
-                        }
-                    }
-
-                    if (dep.source != dep.sink && dep.type == DepType.RAW) {
-                        this.isParallel = false;
-
-                        console.log(`[DependencyAnalysis] Parallelism broken by Scalar: ${dep.var} (RAW dependency)`);
-                        this.logDependency(dep);
-                    }
+                    if (dep.type === DepType.RAW) cond.RAW++;
+                    if (dep.type === DepType.WAR) cond.WAR++;
+                    if (dep.type === DepType.WAW) cond.WAW++;
+    
+                } else {
+                    // Not a reduction self-dependency? Then it's a real race condition.
+                    this.isParallel = false;
+                    console.log(`[DependencyAnalysis] Parallelism broken by ${dep.var}`);
+                    this.logDependency(dep);
                 }
-                else {
+            } else {
+                // No loop-carried dependency? Standard private variable logic.
+                // (Only for scalars, as arrays are usually shared unless specifically private)
+                if (this.scalars.includes(dep.var)) {
                     this.privates.add(dep.var);
                 }
             }
         }
-
+    
+        // Final Validation of Reductions
         for (const [varName, cond] of this.reductionPotentials.entries()) {
-            const stmtJp = this.statements[parseInt(cond.statement.slice(1)) - 1];
-            const isCandidate = ISLLoopBuilder.isReductionCandidate(stmtJp as AssignmentStatement);
-
-            if (isCandidate && cond.RAW === 1 && cond.WAR === 1 && cond.WAW === 1) {
+            const isScalar = this.scalars.includes(varName);
+    
+            // Standard reduction "Gold Standard": 1 RAW, 1 WAR, 1 WAW
+            if (cond.RAW === 1 && cond.WAR === 1 && cond.WAW === 1) {
                 this.confirmedReductions.add(varName);
-                this.privates.delete(varName);
-
-                console.log(`[DependencyAnalysis] Variable ${varName} is a confirmed reduction variable.`);
-            }
-            else if (cond.RAW > 0) {
+                this.privates.delete(varName); // Don't make it private; it's a reduction!
+                console.log(`[DependencyAnalysis] ${isScalar ? 'Scalar' : 'Array'} ${varName} confirmed as reduction.`);
+            } else if (cond.RAW > 0) {
+                // If it had a RAW dependency but didn't meet reduction criteria, it's sequential.
                 this.isParallel = false;
-
-                console.log(`[DependencyAnalysis] Parallelism broken by Scalar: ${varName} (Reduction candidate with RAW dependencies)`);
+                console.log(`[DependencyAnalysis] Parallelism broken by ${varName} (Failed reduction check)`);
             }
         }
     }

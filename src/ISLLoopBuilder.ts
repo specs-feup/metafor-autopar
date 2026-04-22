@@ -147,7 +147,7 @@ export default class ISLLoopBuilder {
     }
 
     public static isReductionCandidate(stmt: AssignmentStatement): boolean {
-        if (stmt.variable instanceof ArraySubscriptExpr || !(stmt.expr instanceof BinaryOperator)) {
+        if (!(stmt.expr instanceof BinaryOperator)) {
             return false;
         }
 
