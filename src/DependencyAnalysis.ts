@@ -22,6 +22,7 @@ interface ReductionConditions {
     WAR: number,
     WAW: number,
     statement: string,
+    operator: string,
 }
 
 export default class DependencyAnalysis {
@@ -63,14 +64,15 @@ export default class DependencyAnalysis {
             if (isOuterCarried) {
                 // Identify if the statement is a reduction (e.g., y(i) = y(i) + ...)
                 const stmtJp = this.statements[parseInt(dep.source.slice(1)) - 1];
-                const isCandidate = ISLLoopBuilder.isReductionCandidate(stmtJp as AssignmentStatement);
+                const operator = ISLLoopBuilder.isReductionCandidate(stmtJp as AssignmentStatement);
     
                 // If it's a self-dependency on a candidate statement, we track it
-                if (isCandidate && dep.sink === dep.source) {
+                if (operator && dep.sink === dep.source) {
                     if (!this.reductionPotentials.has(dep.var)) {
                         this.reductionPotentials.set(dep.var, {
                             RAW: 0, WAR: 0, WAW: 0,
                             statement: dep.source,
+                            operator: operator
                         });
                     }
     
@@ -124,6 +126,14 @@ export default class DependencyAnalysis {
             for (const priv of this.privates) {
                 const ref = FortranJoinPoints.dataRef(priv);
                 const clause = FortranJoinPoints.ompPrivateClause([ref]);
+
+                clauses.push(clause);
+            }
+
+            for (const red of this.confirmedReductions) {
+                const ref = FortranJoinPoints.dataRef(red);
+                const reductionInfo = this.reductionPotentials.get(red)!;
+                const clause = FortranJoinPoints.ompReductionClause(reductionInfo.operator, [ref]);
 
                 clauses.push(clause);
             }

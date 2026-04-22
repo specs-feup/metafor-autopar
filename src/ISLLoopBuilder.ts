@@ -146,15 +146,22 @@ export default class ISLLoopBuilder {
         return `S${statementId}[${loopInfos.map(l => l.var).join(", ")}] -> ${ref.code.trim()}[0]`;
     }
 
-    public static isReductionCandidate(stmt: AssignmentStatement): boolean {
+    public static isReductionCandidate(stmt: AssignmentStatement): string | undefined {
         if (!(stmt.expr instanceof BinaryOperator)) {
-            return false;
+            return undefined;
         }
 
         const lhsVar = stmt.variable.code.trim();
         const binaryExpr = stmt.expr as BinaryOperator;
+        const allowedOperators = ["+", "*", "min", "max"];
         
-        return binaryExpr.left.code.trim() === lhsVar || binaryExpr.right.code.trim() === lhsVar;
+        if (binaryExpr.left.code.trim() === lhsVar || binaryExpr.right.code.trim() === lhsVar) {
+            if (allowedOperators.includes(binaryExpr.kind)) {
+                return binaryExpr.kind;
+            }
+        }
+
+        return undefined;
     }
 
     public getScalars(): string[] {
@@ -175,7 +182,8 @@ export default class ISLLoopBuilder {
             schedules: this.schedules,
             reads: this.reads,
             writes: this.writes,
-            parameters: this.parameters,
+            //WORKS FOR NOW BUT MAY BREAK WITH MORE FEATURES
+            parameters: this.parameters.filter(p => !this.privates.includes(p)),
             privates: this.privates,
             scalars: this.scalars
         };
