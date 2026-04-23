@@ -3,6 +3,7 @@ import { CompilerDirective, DoStatement } from "@specs-feup/metafor/api/Joinpoin
 import ISLLoopBuilder from "../dist/ISLLoopBuilder.js";
 import ISLCaller from "../dist/ISLCaller.js";
 import DependencyAnalysis from "../dist/DependencyAnalysis.js";
+import PostProcessing from "../dist/PostProcessing.js";
 
 async function analyseLoopNest(jp) {
     const loopBuilder = new ISLLoopBuilder(jp);
@@ -51,4 +52,6 @@ for (const dir of Query.search(CompilerDirective, { directiveString: "scop"})) {
 
         curr = curr.rightJp;
     }
+
+    PostProcessing.mergeParallelRegions(parallelizedLoops);
 }
