@@ -18,23 +18,26 @@ async function analyseLoopNest(jp) {
     return analysis.wrapOpenMP();
 }
 
-async function recursiveParallelize(loopJp) { 
+async function recursiveParallelize(loopJp, parallelizedLoops) { 
     const wasParallelized = await analyseLoopNest(loopJp);
 
     if (wasParallelized) {
         console.log(`   [SUCCESS] Parallelized outer loop.`);
+        parallelizedLoops.push(loopJp);
     } else {
         console.log(`   [FAIL] Outer loop is sequential. Checking inner loops...`);
         
         for (const child of loopJp.body.children) {
             if (child instanceof DoStatement) {
-                await recursiveParallelize(child);
+                await recursiveParallelize(child, parallelizedLoops);
             }
         }
     }
 }
 
 for (const dir of Query.search(CompilerDirective, { directiveString: "scop"})) {
+
+    const parallelizedLoops = []
 
     let curr = dir;
     while (curr.rightJp) {
@@ -43,7 +46,7 @@ for (const dir of Query.search(CompilerDirective, { directiveString: "scop"})) {
         }
         
         if (curr.rightJp instanceof DoStatement) {
-            await recursiveParallelize(curr.rightJp);
+            await recursiveParallelize(curr.rightJp, parallelizedLoops);
         }
 
         curr = curr.rightJp;
