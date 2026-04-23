@@ -19,11 +19,11 @@ async function analyseLoopNest(jp) {
 }
 
 async function recursiveParallelize(loopJp, parallelizedLoops) { 
-    const wasParallelized = await analyseLoopNest(loopJp);
+    const pragmaJp = await analyseLoopNest(loopJp);
 
-    if (wasParallelized) {
+    if (pragmaJp) {
         console.log(`   [SUCCESS] Parallelized outer loop.`);
-        parallelizedLoops.push(loopJp);
+        parallelizedLoops.push(pragmaJp);
     } else {
         console.log(`   [FAIL] Outer loop is sequential. Checking inner loops...`);
         

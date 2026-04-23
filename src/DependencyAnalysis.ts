@@ -1,4 +1,4 @@
-import { AssignmentStatement, DoStatement, OmpClause, ProgramUnit, Statement, UseStatement } from "@specs-feup/metafor/api/Joinpoints.js";
+import { AssignmentStatement, DoStatement, OmpClause, OmpLoopConstruct, ProgramUnit, Statement, UseStatement } from "@specs-feup/metafor/api/Joinpoints.js";
 import FortranJoinPoints from "@specs-feup/metafor/api/FortranJoinPoints.js";
 import ISLLoopBuilder from "./ISLLoopBuilder.js";
 import Query from "@specs-feup/lara/api/weaver/Query.js";
@@ -112,7 +112,7 @@ export default class DependencyAnalysis {
         return this.isParallel;
     }
 
-    public wrapOpenMP() {
+    public wrapOpenMP(): OmpLoopConstruct | undefined {
         if (this.isParallel) {
             //console.log(`[DependencyAnalysis] Loop at line ${this.jp.line} is parallel! Wrapping...`);
             const pragma = FortranJoinPoints.emptyOmpLoopConstruct();
@@ -156,10 +156,11 @@ export default class DependencyAnalysis {
                 const ompLibUse = FortranJoinPoints.useStatement("omp_lib");
                 programUnit.specification.addUseStmt(ompLibUse);
             }
+
+            return pragma;
         } else {
             //console.log(`[DependencyAnalysis] Loop at line ${this.jp.line} is sequential.`);
+            return undefined;
         }
-
-        return this.isParallel;
     }
 }
