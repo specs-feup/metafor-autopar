@@ -57,6 +57,7 @@ export default class PostProcessing {
             }
 
             loop.setClauses(newClauses);
+            loop.setDirective("do");
         }
 
         const regionJp = FortranJoinPoints.emptyOmpBlockConstruct();
