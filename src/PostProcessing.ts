@@ -66,7 +66,11 @@ export default class PostProcessing {
         const firstLoop = cluster[0] as OmpLoopConstruct;
 
         firstLoop.replaceWith(regionJp);
-        
+
+        for (const loop of cluster) {
+            loop.detach();
+        }
+
         const execution = FortranJoinPoints.execution(cluster);
         regionJp.setBody(execution);
     }

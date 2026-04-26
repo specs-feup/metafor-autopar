@@ -1,11 +1,16 @@
 import Query from "@specs-feup/lara/api/weaver/Query.js";
 import { Statement, DoStatement, DataRef, Expr, RangeLoopControl, ActionStatement, AssignmentStatement, ArraySubscriptExpr, BinaryOperator, Joinpoint } from "@specs-feup/metafor/api/Joinpoints.js";
 
+interface AccessRelation {
+    relation: string,
+    variable: string,
+}
+
 export default class ISLLoopBuilder {
     private domains: string[] = [];
     private schedules: string[] = [];
-    private reads: string[] = [];
-    private writes: string[] = [];
+    private reads: AccessRelation[] = [];
+    private writes: AccessRelation[] = [];
 
     private parameters: string[] = [];
     private privates: string[] = [];
@@ -110,6 +115,9 @@ export default class ISLLoopBuilder {
                 statementId++;
             }
         }
+
+        const writeVariables = this.writes.map(w => w.variable);
+        this.reads = this.reads.filter(r => writeVariables.includes(r.variable));
     }
 
     private static buildDomain(
@@ -143,19 +151,25 @@ export default class ISLLoopBuilder {
         arrayExpr: ArraySubscriptExpr,
         loopInfos: Array<{ var: string; lower: string; upper: string }>,
         statementId: number
-    ): string {
+    ): AccessRelation {
         const arrayName = arrayExpr.var.code.trim();
         const subscripts = arrayExpr.subscripts.map(sub => sub.code).join(", ");
 
-        return `S${statementId}[${loopInfos.map(l => l.var).join(", ")}] -> ${arrayName}[${subscripts}]`;
+        return {
+            relation: `S${statementId}[${loopInfos.map(l => l.var).join(", ")}] -> ${arrayName}[${subscripts}]`,
+            variable: arrayName
+        };
     }
 
     private static buildScalarRelation(
         ref: DataRef,
         loopInfos: Array<{ var: string; lower: string; upper: string }>,
         statementId: number
-    ): string {
-        return `S${statementId}[${loopInfos.map(l => l.var).join(", ")}] -> ${ref.code.trim()}[0]`;
+    ): AccessRelation {
+        return {
+            relation: `S${statementId}[${loopInfos.map(l => l.var).join(", ")}] -> ${ref.code.trim()}[0]`,
+            variable: ref.code.trim()
+        };
     }
 
     public static isReductionCandidate(stmt: AssignmentStatement): string | undefined {
@@ -192,8 +206,8 @@ export default class ISLLoopBuilder {
         return {
             domains: this.domains,
             schedules: this.schedules,
-            reads: this.reads,
-            writes: this.writes,
+            reads: this.reads.map(r => r.relation),
+            writes: this.writes.map(w => w.relation),
             //WORKS FOR NOW BUT MAY BREAK WITH MORE FEATURES
             parameters: this.parameters.filter(p => !this.privates.includes(p)),
             privates: this.privates,
