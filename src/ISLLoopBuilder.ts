@@ -33,7 +33,6 @@ export default class ISLLoopBuilder {
             curr = curr.parent;
         }
 
-        console.log(`Statement: ${stmt.code.trim()}, Index: ${curr.indexOfSelf}, current node: ${curr.code.trim()}`);
         return curr.indexOfSelf;
     }
 
@@ -166,8 +165,8 @@ export default class ISLLoopBuilder {
 
         const lhsVar = stmt.variable.code.trim();
         const binaryExpr = stmt.expr as BinaryOperator;
-        const allowedOperators = ["+", "*", "min", "max"];
-        
+        const allowedOperators = ["ADD", "MUL"];
+
         if (binaryExpr.left.code.trim() === lhsVar || binaryExpr.right.code.trim() === lhsVar) {
             if (allowedOperators.includes(binaryExpr.kind)) {
                 return binaryExpr.kind;
