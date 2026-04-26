@@ -1,5 +1,5 @@
 import Query from "@specs-feup/lara/api/weaver/Query.js";
-import { Statement, DoStatement, DataRef, Expr, RangeLoopControl, ActionStatement, AssignmentStatement, ArraySubscriptExpr, BinaryOperator } from "@specs-feup/metafor/api/Joinpoints.js";
+import { Statement, DoStatement, DataRef, Expr, RangeLoopControl, ActionStatement, AssignmentStatement, ArraySubscriptExpr, BinaryOperator, Joinpoint } from "@specs-feup/metafor/api/Joinpoints.js";
 
 export default class ISLLoopBuilder {
     private domains: string[] = [];
@@ -26,8 +26,20 @@ export default class ISLLoopBuilder {
         return bound.code.trim();
     }
 
-    private extractLoopInfos(stmt: Statement): Array<{ var: string; lower: string; upper: string }> {
+    private static loopIndexHelper(stmt: Statement, loop: DoStatement): number {
+        let curr: any = stmt;
+    
+        while (curr.parent !== null && !curr.parent.equals(loop.body)) {
+            curr = curr.parent;
+        }
+
+        console.log(`Statement: ${stmt.code.trim()}, Index: ${curr.indexOfSelf}, current node: ${curr.code.trim()}`);
+        return curr.indexOfSelf;
+    }
+
+    private extractLoopInfos(stmt: Statement): Array<{ var: string; lower: string; upper: string, index: number }> {
         let curr: DoStatement | null = stmt.getAncestor("doStatement") as DoStatement;
+        let prev = stmt;
         const res = [];
 
         while (curr !== null) {
@@ -37,9 +49,10 @@ export default class ISLLoopBuilder {
             const upper = this.processLoopBound(control.upper);
 
             if (!this.privates.includes(varName)) this.privates.push(varName);
-            res.unshift({ var: varName, lower, upper });
+            res.unshift({ var: varName, lower, upper , index: ISLLoopBuilder.loopIndexHelper(prev, curr) });
 
             if (curr.equals(this.jp)) break;
+            prev = curr;
             curr = curr.getAncestor("doStatement") as DoStatement;
         }
 
@@ -114,16 +127,16 @@ export default class ISLLoopBuilder {
 
     private static buildSchedule(
         stmt: AssignmentStatement,
-        loopInfos: Array<{ var: string; lower: string; upper: string }>,
+        loopInfos: Array<{ var: string; lower: string; upper: string; index: number }>,
         statementId: number,
         maxDepth: number
     ): string {
-        const dims = loopInfos.map(loop => `${loop.var}, ${statementId - 1}`);
-
+        const dims = loopInfos.map(loop => `${loop.var}, ${loop.index}`);
+    
         while (dims.length < maxDepth) {
             dims.push("0, 0");
         }
-
+    
         return `S${statementId}[${loopInfos.map(l => l.var).join(", ")}] -> [${dims.join(", ")}]`;
     }
 
