@@ -21,7 +21,6 @@ program nested_loop_example
     !DIR$ scop
     do i = 1, N
         temp = temp + i
-        A(i) = temp + 1
     end do
     !DIR$ end scop
 

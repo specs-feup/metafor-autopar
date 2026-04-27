@@ -1,5 +1,5 @@
 import FortranJoinPoints from "@specs-feup/metafor/api/FortranJoinPoints.js";
-import { OmpDataSharingClause, OmpClause, OmpLoopConstruct } from "@specs-feup/metafor/api/Joinpoints.js";
+import { OmpDataSharingClause, OmpClause, OmpLoopConstruct, DoStatement, Execution, RangeLoopControl } from "@specs-feup/metafor/api/Joinpoints.js";
 
 export default class PostProcessing {
     public static mergeParallelRegions(loops: OmpLoopConstruct[]) {
@@ -74,4 +74,38 @@ export default class PostProcessing {
         const execution = FortranJoinPoints.execution(cluster);
         regionJp.setBody(execution);
     }
+
+    public static liftParallelRegion(loop: OmpLoopConstruct) {
+        if (!((loop.parent instanceof Execution) && (loop.parent.parent instanceof DoStatement))) return;
+
+        const parentLoop = loop.parent.parent as DoStatement;
+        const regionJp = FortranJoinPoints.emptyOmpBlockConstruct();
+
+        const regionClauses: OmpClause[] = [];
+        const loopClauses: OmpClause[] = [];
+
+        for (const clause of loop.clauses) {
+            if (clause instanceof OmpDataSharingClause) {
+                regionClauses.push(clause);
+            }
+            else {
+                loopClauses.push(clause);
+            }
+        }
+
+        const loopControl = parentLoop.control as RangeLoopControl;
+        const loopVar = loopControl.var.code.trim();
+        const ref = FortranJoinPoints.dataRef(loopVar);
+        regionClauses.push(FortranJoinPoints.ompPrivateClause([ref]));
+
+        regionJp.setClauses(regionClauses);
+        loop.setClauses(loopClauses);
+        loop.setDirective("do");
+
+        const temp = parentLoop;
+        parentLoop.replaceWith(regionJp);
+
+        const execution = FortranJoinPoints.execution([temp]);
+        regionJp.setBody(execution);
+    } 
 }
