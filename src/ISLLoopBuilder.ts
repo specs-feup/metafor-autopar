@@ -1,5 +1,6 @@
 import Query from "@specs-feup/lara/api/weaver/Query.js";
 import { Statement, DoStatement, DataRef, Expr, RangeLoopControl, ActionStatement, AssignmentStatement, ArraySubscriptExpr, BinaryOperator, Joinpoint } from "@specs-feup/metafor/api/Joinpoints.js";
+import SymbolicAnalysis from "./SymbolicAnalysis.js";
 
 interface AccessRelation {
     relation: string,
@@ -23,7 +24,17 @@ export default class ISLLoopBuilder {
         this.jp = jp;
     }
 
-    private processLoopBound(bound: Expr): string {
+    private processLoopBound(bound: Expr, iterators: string[]): string {
+        let rawCode = bound.code.trim();
+
+        if (SymbolicAnalysis.isNonAffine(rawCode, iterators)) {
+            const surrogate = "p_" + rawCode.replace(/[^a-zA-Z0-9]/g, '_');
+            if (!this.parameters.includes(surrogate)) {
+                this.parameters.push(surrogate);
+            }
+            return surrogate;
+        }
+
         for (const ref of Query.searchFromInclusive(bound, DataRef)) {
             const code = ref.code.trim();
             if (!this.parameters.includes(code)) this.parameters.push(code);
@@ -33,6 +44,8 @@ export default class ISLLoopBuilder {
 
     private static loopIndexHelper(stmt: Statement, loop: DoStatement): number {
         let curr: any = stmt;
+
+        console.log(`Finding index of statement ${stmt.code.trim()} in loop ${loop.control.code.trim()}`);
     
         while (curr.parent !== null && !curr.parent.equals(loop.body)) {
             curr = curr.parent;
@@ -45,19 +58,28 @@ export default class ISLLoopBuilder {
         let curr: DoStatement | null = stmt.getAncestor("doStatement") as DoStatement;
         let prev = stmt;
         const res = [];
+        const loops: DoStatement[] = [];
+        const iterators: string[] = [];
+        const indices: number[] = [];
 
         while (curr !== null) {
-            const control = curr.control as RangeLoopControl;
-            const varName = control.var.code.trim();
-            const lower = this.processLoopBound(control.lower);
-            const upper = this.processLoopBound(control.upper);
-
-            if (!this.privates.includes(varName)) this.privates.push(varName);
-            res.unshift({ var: varName, lower, upper , index: ISLLoopBuilder.loopIndexHelper(prev, curr) });
+            loops.unshift(curr);
+            indices.push(ISLLoopBuilder.loopIndexHelper(prev, curr));
 
             if (curr.equals(this.jp)) break;
             prev = curr;
             curr = curr.getAncestor("doStatement") as DoStatement;
+        }
+
+        for (const loop of loops) {
+            const control = loop.control as RangeLoopControl;
+            const varName = control.var.code.trim();
+            iterators.push(varName);
+            const lower = this.processLoopBound(control.lower, iterators);
+            const upper = this.processLoopBound(control.upper, iterators);
+
+            if (!this.privates.includes(varName)) this.privates.push(varName);
+            res.push({ var: varName, lower, upper , index: indices.pop()! });
         }
 
         return res;
