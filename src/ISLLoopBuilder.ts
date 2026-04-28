@@ -1,5 +1,5 @@
 import Query from "@specs-feup/lara/api/weaver/Query.js";
-import { Statement, DoStatement, DataRef, Expr, RangeLoopControl, ActionStatement, AssignmentStatement, ArraySubscriptExpr, BinaryOperator, Joinpoint } from "@specs-feup/metafor/api/Joinpoints.js";
+import { Statement, DoStatement, DataRef, Expr, RangeLoopControl, ActionStatement, AssignmentStatement, ArraySubscriptExpr, BinaryOperator, Joinpoint, IfStatement } from "@specs-feup/metafor/api/Joinpoints.js";
 import SymbolicAnalysis from "./SymbolicAnalysis.js";
 
 interface AccessRelation {
@@ -12,6 +12,7 @@ export default class ISLLoopBuilder {
     private schedules: string[] = [];
     private reads: AccessRelation[] = [];
     private writes: AccessRelation[] = [];
+    private conditions: Map<string, string[]> = new Map();
 
     private parameters: string[] = [];
     private privates: string[] = [];
@@ -85,6 +86,10 @@ export default class ISLLoopBuilder {
         return res;
     }
 
+    private extractCondition(ifStmt: IfStatement, statementId: number) {
+        
+    }
+
     public buildStatements() {
         let statementId = 1;
         const actionStmts = this.jp.descendants.filter(s => s instanceof ActionStatement);
@@ -99,6 +104,10 @@ export default class ISLLoopBuilder {
         for (const { stmt, loopInfos } of stmtEntries) {
             if (stmt instanceof AssignmentStatement) {
                 const assignment = stmt as AssignmentStatement;
+
+                if (assignment.parent instanceof IfStatement) {
+                    this.extractCondition(assignment.parent, statementId);
+                }
 
                 this.domains.push(ISLLoopBuilder.buildDomain(assignment, loopInfos, statementId));
                 
@@ -142,6 +151,10 @@ export default class ISLLoopBuilder {
         this.reads = this.reads.filter(r => writeVariables.includes(r.variable));
     }
 
+    private static getStatementName(statementId: number): string {
+        return `S${statementId}`;
+    }
+
     private static buildDomain(
         stmt: AssignmentStatement,
         loopInfos: Array<{ var: string; lower: string; upper: string }>,
@@ -151,7 +164,7 @@ export default class ISLLoopBuilder {
             .map(loop => `${loop.lower} <= ${loop.var} <= ${loop.upper}`)
             .join(" and ");
 
-        return `S${statementId}[${loopInfos.map(l => l.var).join(", ")}] : ${constraints}`;
+        return `${this.getStatementName(statementId)}[${loopInfos.map(l => l.var).join(", ")}] : ${constraints}`;
     }
 
     private static buildSchedule(
@@ -166,7 +179,7 @@ export default class ISLLoopBuilder {
             dims.push("0, 0");
         }
     
-        return `S${statementId}[${loopInfos.map(l => l.var).join(", ")}] -> [${dims.join(", ")}]`;
+        return `${this.getStatementName(statementId)}[${loopInfos.map(l => l.var).join(", ")}] -> [${dims.join(", ")}]`;
     }
 
     private static buildAccessRelation(
@@ -178,7 +191,7 @@ export default class ISLLoopBuilder {
         const subscripts = arrayExpr.subscripts.map(sub => sub.code).join(", ");
 
         return {
-            relation: `S${statementId}[${loopInfos.map(l => l.var).join(", ")}] -> ${arrayName}[${subscripts}]`,
+            relation: `${this.getStatementName(statementId)}[${loopInfos.map(l => l.var).join(", ")}] -> ${arrayName}[${subscripts}]`,
             variable: arrayName
         };
     }
@@ -189,7 +202,7 @@ export default class ISLLoopBuilder {
         statementId: number
     ): AccessRelation {
         return {
-            relation: `S${statementId}[${loopInfos.map(l => l.var).join(", ")}] -> ${ref.code.trim()}[0]`,
+            relation: `${this.getStatementName(statementId)}[${loopInfos.map(l => l.var).join(", ")}] -> ${ref.code.trim()}[0]`,
             variable: ref.code.trim()
         };
     }
