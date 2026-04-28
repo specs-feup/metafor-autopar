@@ -87,7 +87,12 @@ export default class ISLLoopBuilder {
     }
 
     private extractCondition(ifStmt: IfStatement, statementId: number) {
-        
+        if (SymbolicAnalysis.isAffineCondition(ifStmt.condition.code.trim())) {
+            if (!this.conditions.has(ISLLoopBuilder.getStatementName(statementId))) {
+                this.conditions.set(ISLLoopBuilder.getStatementName(statementId), []);
+            }
+            this.conditions.get(ISLLoopBuilder.getStatementName(statementId))!.push(ifStmt.condition.code.trim());
+        }
     }
 
     public buildStatements() {
@@ -246,7 +251,8 @@ export default class ISLLoopBuilder {
             //WORKS FOR NOW BUT MAY BREAK WITH MORE FEATURES
             parameters: this.parameters.filter(p => !this.privates.includes(p)),
             privates: this.privates,
-            scalars: this.scalars
+            scalars: this.scalars,
+            conditions: this.conditions,
         };
     }
 }
