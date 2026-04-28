@@ -60,13 +60,13 @@ export default class DependencyAnalysis {
         for (const dep of this.deps) {
             const loopIndex = 0;
             const isOuterCarried = dep.distance.length > loopIndex && dep.distance[loopIndex] !== 0;
+            const isScalar = this.scalars.includes(dep.var);
     
             if (isOuterCarried) {
-                // Identify if the statement is a reduction (e.g., y(i) = y(i) + ...)
                 const stmtJp = this.statements[parseInt(dep.source.slice(1)) - 1];
                 const operator = ISLLoopBuilder.isReductionCandidate(stmtJp as AssignmentStatement);
     
-                // If it's a self-dependency on a candidate statement, track it
+                // 1. Reduction Check (Highest Priority)
                 if (operator && dep.sink === dep.source) {
                     if (!this.reductionPotentials.has(dep.var)) {
                         this.reductionPotentials.set(dep.var, {
@@ -75,19 +75,29 @@ export default class DependencyAnalysis {
                             operator: operator
                         });
                     }
-    
                     const cond = this.reductionPotentials.get(dep.var)!;
                     if (dep.type === DepType.RAW) cond.RAW++;
                     if (dep.type === DepType.WAR) cond.WAR++;
                     if (dep.type === DepType.WAW) cond.WAW++;
-    
-                } else {
-                    this.isParallel = false;
-                    console.log(`[DependencyAnalysis] Parallelism broken by ${dep.var}`);
-                    this.logDependency(dep);
+                    continue;
                 }
+    
+                // 2. Scalar Privatization Logic
+                // WAW/WAR on a scalar doesn't break parallelism; it just mandates 'private'
+                if (isScalar && (dep.type === DepType.WAW || dep.type === DepType.WAR)) {
+                    this.privates.add(dep.var);
+                    continue; 
+                }
+    
+                // 3. Parallelism Breaker
+                // If it's a RAW dependency (on scalar or array) or an array collision
+                this.isParallel = false;
+                console.log(`[DependencyAnalysis] Parallelism broken by ${dep.var} (${dep.type})`);
+                this.logDependency(dep);
+    
             } else {
-                if (this.scalars.includes(dep.var)) {
+                // Intra-iteration dependency: if it's a scalar, it must be private
+                if (isScalar) {
                     this.privates.add(dep.var);
                 }
             }
