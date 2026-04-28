@@ -46,8 +46,6 @@ export default class ISLLoopBuilder {
     private static loopIndexHelper(stmt: Statement, loop: DoStatement): number {
         let curr: any = stmt;
 
-        console.log(`Finding index of statement ${stmt.code.trim()} in loop ${loop.control.code.trim()}`);
-    
         while (curr.parent !== null && !curr.parent.equals(loop.body)) {
             curr = curr.parent;
         }
@@ -87,11 +85,16 @@ export default class ISLLoopBuilder {
     }
 
     private extractCondition(ifStmt: IfStatement, statementId: number) {
-        if (SymbolicAnalysis.isAffineCondition(ifStmt.condition.code.trim())) {
-            if (!this.conditions.has(ISLLoopBuilder.getStatementName(statementId))) {
-                this.conditions.set(ISLLoopBuilder.getStatementName(statementId), []);
+        const rawCond = ifStmt.condition.code.trim();
+    
+        const islReady = SymbolicAnalysis.getISLReadyCondition(rawCond);
+        
+        if (islReady) {
+            const stmtName = ISLLoopBuilder.getStatementName(statementId);
+            if (!this.conditions.has(stmtName)) {
+                this.conditions.set(stmtName, []);
             }
-            this.conditions.get(ISLLoopBuilder.getStatementName(statementId))!.push(ifStmt.condition.code.trim());
+            this.conditions.get(stmtName)!.push(islReady);
         }
     }
 
@@ -252,7 +255,7 @@ export default class ISLLoopBuilder {
             parameters: this.parameters.filter(p => !this.privates.includes(p)),
             privates: this.privates,
             scalars: this.scalars,
-            conditions: this.conditions,
+            conditions: Object.fromEntries(this.conditions),
         };
     }
 }

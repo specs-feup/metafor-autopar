@@ -53,17 +53,28 @@ export default class SymbolicAnalysis {
             .trim();
     }
 
-    public static isAffineCondition(condition: string): boolean {
-        const sanitized = this.fortranToMathJS(condition);
+    public static getISLReadyCondition(condition: string): string | null {
+        // 1. Convert Fortran to MathJS compatible syntax (==, !=, etc.)
+        const mathJSSyntax = this.fortranToMathJS(condition);
         
         try {
-            // Simplify helps resolve "i - i > 0" to "0 > 0"
-            const node = simplify(parse(sanitized));
-            return !this.hasNonAffineTerms(node);
+            const node = simplify(parse(mathJSSyntax));
+
+            if (this.hasNonAffineTerms(node)) return null;
+
+            return this.mathJSToISL(node.toString());
         } catch (e) {
-            // If mathjs fails to parse, it's too complex for our ISL bridge
-            return false;
+            return null;
         }
+    }
+
+    private static mathJSToISL(simplifiedExpr: string): string {
+        return simplifiedExpr
+            .replace(/==/g, '=')
+            .replace(/and/g, ' and ')
+            .replace(/or/g, ' or ')
+            .replace(/\s+/g, ' ')
+            .trim();
     }
 
     private static hasNonAffineTerms(node: MathNode): boolean {
