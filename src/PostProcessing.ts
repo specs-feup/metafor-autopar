@@ -19,7 +19,7 @@ export default class PostProcessing {
             const prev = loops[i - 1] as OmpLoopConstruct;
             const curr = loops[i] as OmpLoopConstruct;
 
-            if (prev?.rightJp.equals(curr)) {
+            if (prev.rightJp?.equals(curr)) {
                 currentCluster.push(curr);
             } else {
                 if (currentCluster.length > 1) {
