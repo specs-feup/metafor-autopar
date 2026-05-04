@@ -1,5 +1,5 @@
 import Query from "@specs-feup/lara/api/weaver/Query.js";
-import { Statement, DoStatement, DataRef, Expr, RangeLoopControl, ActionStatement, AssignmentStatement, ArraySubscriptExpr, BinaryOperator, Joinpoint, IfStatement } from "@specs-feup/metafor/api/Joinpoints.js";
+import { Statement, DoStatement, DataRef, Expr, RangeLoopControl, ActionStatement, AssignmentStatement, ArraySubscriptExpr, BinaryOperator, Joinpoint, IfStatement, IfConstruct } from "@specs-feup/metafor/api/Joinpoints.js";
 import SymbolicAnalysis from "./SymbolicAnalysis.js";
 
 interface AccessRelation {
@@ -7,12 +7,17 @@ interface AccessRelation {
     variable: string,
 }
 
+interface Condition {
+    expression: string,
+    negated: boolean,
+}
+
 export default class ISLLoopBuilder {
     private domains: string[] = [];
     private schedules: string[] = [];
     private reads: AccessRelation[] = [];
     private writes: AccessRelation[] = [];
-    private conditions: Map<string, string[]> = new Map();
+    private conditions: Map<string, Condition[]> = new Map();
 
     private parameters: string[] = [];
     private privates: string[] = [];
@@ -53,8 +58,41 @@ export default class ISLLoopBuilder {
         return curr.indexOfSelf;
     }
 
-    private extractLoopInfos(stmt: Statement): Array<{ var: string; lower: string; upper: string, index: number }> {
-        let curr: DoStatement | null = stmt.getAncestor("doStatement") as DoStatement;
+    private static findNextInfoAncestor(stmt: Statement): DoStatement | IfConstruct {
+        let curr: any = stmt;
+
+        while (curr.parent !== null) {
+            if (curr.parent instanceof DoStatement || curr.parent instanceof IfConstruct) {
+                return curr.parent;
+            }
+            curr = curr.parent;
+        }
+
+        throw new Error(`[ISLLoopBuilder] No ancestor loop or if construct found for statement ${stmt.code}`);
+    }
+
+    private extractGuards(stmt: Statement, construct: IfConstruct, statementId: number) {
+        if (construct.ifThenBlock.body.contains(stmt)) {
+            this.extractCondition(construct.ifThenBlock.header.condition, statementId);
+            return;
+        }
+        else {
+            this.extractCondition(construct.ifThenBlock.header.condition, statementId, true);
+        }
+
+        for (const elseIf of construct.elseIfBlocks) {
+            if (elseIf.body.contains(stmt)) {
+                this.extractCondition(elseIf.header.condition, statementId);
+                return;
+            }
+            else {
+                this.extractCondition(elseIf.header.condition, statementId, true);
+            }
+        }
+    }
+
+    private extractLoopInfos(stmt: Statement, statementId: number): Array<{ var: string; lower: string; upper: string, index: number }> {
+        let curr: DoStatement | IfConstruct | null = ISLLoopBuilder.findNextInfoAncestor(stmt);
         let prev = stmt;
         const res = [];
         const loops: DoStatement[] = [];
@@ -62,12 +100,17 @@ export default class ISLLoopBuilder {
         const indices: number[] = [];
 
         while (curr !== null) {
-            loops.unshift(curr);
-            indices.push(ISLLoopBuilder.loopIndexHelper(prev, curr));
-
+            if (curr instanceof DoStatement) {
+                loops.unshift(curr);
+                indices.push(ISLLoopBuilder.loopIndexHelper(prev, curr));
+            }
+            else if (curr instanceof IfConstruct) {
+                this.extractGuards(stmt, curr, statementId);
+            }
+            
             if (curr.equals(this.jp)) break;
             prev = curr;
-            curr = curr.getAncestor("doStatement") as DoStatement;
+            curr = ISLLoopBuilder.findNextInfoAncestor(curr);
         }
 
         for (const loop of loops) {
@@ -84,7 +127,7 @@ export default class ISLLoopBuilder {
         return res;
     }
 
-    private extractCondition(condition: Expr, statementId: number) {
+    private extractCondition(condition: Expr, statementId: number, negated: boolean = false) {
         const rawCond = condition.code.trim();
     
         const islReady = SymbolicAnalysis.getISLReadyCondition(rawCond);
@@ -94,35 +137,35 @@ export default class ISLLoopBuilder {
             if (!this.conditions.has(stmtName)) {
                 this.conditions.set(stmtName, []);
             }
-            this.conditions.get(stmtName)!.push(islReady);
+            this.conditions.get(stmtName)!.push({expression: islReady, negated});
         }
     }
 
     public buildStatements() {
-        let statementId = 1;
         const actionStmts = this.jp.descendants.filter(s => s instanceof ActionStatement);
 
-        const stmtEntries = actionStmts.map(stmt => ({
+        const stmtEntries = actionStmts.map((stmt, idx) => ({
             stmt,
-            loopInfos: this.extractLoopInfos(stmt)
+            idx: idx+1,
+            loopInfos: this.extractLoopInfos(stmt, idx+1)
         }));
 
         const maxDepth = Math.max(...stmtEntries.map(e => e.loopInfos.length), 0);
 
-        for (const { stmt, loopInfos } of stmtEntries) {
+        for (const { stmt, idx, loopInfos } of stmtEntries) {
             if (stmt instanceof AssignmentStatement) {
                 const assignment = stmt as AssignmentStatement;
 
                 if (assignment.parent instanceof IfStatement) {
-                    this.extractCondition(assignment.parent.condition, statementId);
+                    this.extractCondition(assignment.parent.condition, idx);
                 }
 
-                this.domains.push(ISLLoopBuilder.buildDomain(assignment, loopInfos, statementId));
+                this.domains.push(ISLLoopBuilder.buildDomain(assignment, loopInfos, idx));
                 
-                this.schedules.push(ISLLoopBuilder.buildSchedule(assignment, loopInfos, statementId, maxDepth));
+                this.schedules.push(ISLLoopBuilder.buildSchedule(assignment, loopInfos, idx, maxDepth));
 
                 if (assignment.variable instanceof ArraySubscriptExpr) {
-                    this.writes.push(ISLLoopBuilder.buildAccessRelation(assignment.variable as ArraySubscriptExpr, loopInfos, statementId));
+                    this.writes.push(ISLLoopBuilder.buildAccessRelation(assignment.variable as ArraySubscriptExpr, loopInfos, idx));
                 } else {
                     const varName = assignment.variable.code.trim();
 
@@ -132,12 +175,12 @@ export default class ISLLoopBuilder {
 
                     if (!this.scalars.includes(varName)) this.scalars.push(varName);
                     if (this.parameters.includes(varName)) this.parameters = this.parameters.filter(p => p !== varName);
-                    this.writes.push(ISLLoopBuilder.buildScalarRelation(assignment.variable as DataRef, loopInfos, statementId));
+                    this.writes.push(ISLLoopBuilder.buildScalarRelation(assignment.variable as DataRef, loopInfos, idx));
                 }
 
                 for (const read of assignment.expr.descendants.filter(d => d instanceof DataRef) as DataRef[]) {
                     if (read instanceof ArraySubscriptExpr) {
-                        this.reads.push(ISLLoopBuilder.buildAccessRelation(read as ArraySubscriptExpr, loopInfos, statementId));
+                        this.reads.push(ISLLoopBuilder.buildAccessRelation(read as ArraySubscriptExpr, loopInfos, idx));
                     } else if (!(read.parent instanceof ArraySubscriptExpr)) {
                         const varName = read.code.trim();
 
@@ -146,12 +189,11 @@ export default class ISLLoopBuilder {
                         }
 
                         if (!this.scalars.includes(varName) && !this.parameters.includes(varName)) this.parameters.push(varName);
-                        this.reads.push(ISLLoopBuilder.buildScalarRelation(read, loopInfos, statementId));
+                        this.reads.push(ISLLoopBuilder.buildScalarRelation(read, loopInfos, idx));
                     }
                 }
 
                 this.stmts.push(assignment);
-                statementId++;
             }
         }
 

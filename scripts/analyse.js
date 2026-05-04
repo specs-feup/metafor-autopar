@@ -9,7 +9,7 @@ async function analyseLoopNest(jp) {
     const loopBuilder = new ISLLoopBuilder(jp);
     loopBuilder.buildStatements();
 
-    console.log(loopBuilder.toJSON());
+    console.dir(loopBuilder.toJSON(), { depth: null });
 
     const result = await ISLCaller.spawnPython(loopBuilder.toJSON());
 
