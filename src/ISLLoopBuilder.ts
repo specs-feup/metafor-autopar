@@ -84,8 +84,8 @@ export default class ISLLoopBuilder {
         return res;
     }
 
-    private extractCondition(ifStmt: IfStatement, statementId: number) {
-        const rawCond = ifStmt.condition.code.trim();
+    private extractCondition(condition: Expr, statementId: number) {
+        const rawCond = condition.code.trim();
     
         const islReady = SymbolicAnalysis.getISLReadyCondition(rawCond);
         
@@ -114,7 +114,7 @@ export default class ISLLoopBuilder {
                 const assignment = stmt as AssignmentStatement;
 
                 if (assignment.parent instanceof IfStatement) {
-                    this.extractCondition(assignment.parent, statementId);
+                    this.extractCondition(assignment.parent.condition, statementId);
                 }
 
                 this.domains.push(ISLLoopBuilder.buildDomain(assignment, loopInfos, statementId));
