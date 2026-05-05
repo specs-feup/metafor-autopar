@@ -1,5 +1,5 @@
 import Query from "@specs-feup/lara/api/weaver/Query.js";
-import { Statement, DoStatement, DataRef, Expr, RangeLoopControl, ActionStatement, AssignmentStatement, ArraySubscriptExpr, BinaryOperator, Joinpoint, IfStatement, IfConstruct } from "@specs-feup/metafor/api/Joinpoints.js";
+import { Statement, DoStatement, DataRef, Expr, RangeLoopControl, ActionStatement, AssignmentStatement, ArraySubscriptExpr, BinaryOperator, Joinpoint, IfStatement, IfConstruct, ProgramUnit, TypeDeclarationStatement, ParameterKeyword, ExprInitialization, IntLiteral } from "@specs-feup/metafor/api/Joinpoints.js";
 import SymbolicAnalysis from "./SymbolicAnalysis.js";
 
 interface AccessRelation {
@@ -24,10 +24,32 @@ export default class ISLLoopBuilder {
     private scalars: string[] = [];
     private stmts: Statement[] = [];
 
+    private paramDecls: string[] = [];
+
     private jp: DoStatement;
 
     constructor(jp: DoStatement) {
         this.jp = jp;
+        this.findParamDecls();
+    }
+
+    private findParamDecls() {
+        const unit = this.jp.getAncestor("programUnit") as ProgramUnit;
+
+        for (const decl of Query.searchFrom(unit.specification, TypeDeclarationStatement)) {
+            if (decl.attrs.some(attr => attr instanceof ParameterKeyword)) {
+                for (const entity of decl.decls) {
+                    const init = Query.searchFrom(entity, ExprInitialization).first();
+
+                    if (init && init.expr instanceof IntLiteral) {
+                        const name = entity.name;
+                        const value = init.expr.code.trim();
+
+                        this.paramDecls.push(`${name} = ${value}`);
+                    }
+                }
+            }
+        }
     }
 
     private processLoopBound(bound: Expr, iterators: string[]): string {
@@ -298,6 +320,7 @@ export default class ISLLoopBuilder {
             privates: this.privates,
             scalars: this.scalars,
             conditions: Object.fromEntries(this.conditions),
+            paramDecls: this.paramDecls,
         };
     }
 }

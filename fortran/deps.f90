@@ -1,8 +1,8 @@
 program nested_loop_example
 
     ! Parameters for loop bounds
-    integer :: N = 16
-    integer :: M = 32
+    integer, parameter :: N = 16
+    integer, parameter :: M = 32
     
     ! Array declarations
     double precision :: A(N, M)
