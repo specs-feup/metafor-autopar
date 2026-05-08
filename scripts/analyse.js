@@ -13,9 +13,21 @@ async function analyseLoopNest(jp) {
 
     const result = await ISLCaller.spawnPython(loopBuilder.toJSON());
 
+    if (result && result.error) {
+        console.error(`[ISL-BRIDGE-FAILURE]: ${result.error}`);
+        return undefined;
+    }
+
     console.log(JSON.stringify(result, null, 2));
 
-    const analysis = new DependencyAnalysis(jp, result.detailed_dependencies, loopBuilder.getScalars(), loopBuilder.getPrivates(), loopBuilder.getStatements());
+    const analysis = new DependencyAnalysis(
+        jp, 
+        result.detailed_dependencies, 
+        loopBuilder.getScalars(), 
+        loopBuilder.getPrivates(), 
+        loopBuilder.getStatements()
+    );
+    
     return analysis.wrapOpenMP();
 }
 
