@@ -1,5 +1,5 @@
 import Query from "@specs-feup/lara/api/weaver/Query.js";
-import { CompilerDirective, DoStatement } from "@specs-feup/metafor/api/Joinpoints.js";
+import { CompilerDirective, DoStatement, Execution, Subroutine } from "@specs-feup/metafor/api/Joinpoints.js";
 import ISLLoopBuilder from "../dist/ISLLoopBuilder.js";
 import ISLCaller from "../dist/ISLCaller.js";
 import DependencyAnalysis from "../dist/DependencyAnalysis.js";
@@ -63,6 +63,25 @@ for (const dir of Query.search(CompilerDirective, { directiveString: "scop"})) {
         }
 
         curr = curr.rightJp;
+    }
+
+    PostProcessing.mergeParallelRegions(parallelizedLoops);
+}
+
+for (const dir of Query.search(Subroutine, {moduleName: "init_array"})) {
+    const parallelizedLoops = []
+
+    let curr = Query.searchFrom(dir, Execution).first().executableStmts[0];
+    let next = null;
+
+    while (curr) {
+        next = curr.rightJp;
+
+        if (curr instanceof DoStatement) {
+            await recursiveParallelize(curr, parallelizedLoops);
+        }
+
+        curr = next;
     }
 
     PostProcessing.mergeParallelRegions(parallelizedLoops);
