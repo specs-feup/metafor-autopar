@@ -4,6 +4,7 @@ import ISLLoopBuilder from "../dist/ISLLoopBuilder.js";
 import ISLCaller from "../dist/ISLCaller.js";
 import DependencyAnalysis from "../dist/DependencyAnalysis.js";
 import PostProcessing from "../dist/PostProcessing.js";
+import FortranJoinPoints from "@specs-feup/metafor/api/FortranJoinPoints.js";
 
 async function analyseLoopNest(jp) {
     const loopBuilder = new ISLLoopBuilder(jp);
@@ -87,3 +88,32 @@ for (const dir of Query.search(Subroutine, {moduleName: "init_array"})) {
     PostProcessing.mergeParallelRegions(parallelizedLoops);
 }
 */
+
+for (const dir of Query.search(CompilerDirective, { directiveString: "forced"})) {
+    const loop = dir.rightJp;
+
+    const ref = FortranJoinPoints.dataRef("k");
+    const clause = FortranJoinPoints.ompPrivateClause([ref]);
+    const pragma = FortranJoinPoints.emptyOmpLoopConstruct();
+    pragma.setClauses([clause]);
+
+    const tempJp = loop;
+
+    loop.replaceWith(pragma);
+    pragma.setLoop(tempJp);
+
+    const programUnit = loop.getAncestor("programUnit");
+    let hasOmpLib = false;
+
+    for (const useStmt of Query.searchFrom(programUnit.specification, UseStatement)) {
+        if (useStmt.moduleName === "omp_lib") {
+            hasOmpLib = true;
+            break;
+        }
+    }
+
+    if (!hasOmpLib) {
+        const ompLibUse = FortranJoinPoints.useStatement("omp_lib");
+        programUnit.specification.addUseStmt(ompLibUse);
+    }
+}
