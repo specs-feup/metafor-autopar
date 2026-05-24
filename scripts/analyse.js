@@ -1,5 +1,5 @@
 import Query from "@specs-feup/lara/api/weaver/Query.js";
-import { CompilerDirective, DoStatement, Execution, Subroutine } from "@specs-feup/metafor/api/Joinpoints.js";
+import { CompilerDirective, DoStatement, Execution, Subroutine, UseStatement } from "@specs-feup/metafor/api/Joinpoints.js";
 import ISLLoopBuilder from "../dist/ISLLoopBuilder.js";
 import ISLCaller from "../dist/ISLCaller.js";
 import DependencyAnalysis from "../dist/DependencyAnalysis.js";
