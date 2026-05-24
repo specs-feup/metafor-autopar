@@ -67,7 +67,7 @@ for (const dir of Query.search(CompilerDirective, { directiveString: "scop"})) {
 
     PostProcessing.mergeParallelRegions(parallelizedLoops);
 }
-
+/*
 for (const dir of Query.search(Subroutine, {moduleName: "init_array"})) {
     const parallelizedLoops = []
 
@@ -86,3 +86,4 @@ for (const dir of Query.search(Subroutine, {moduleName: "init_array"})) {
 
     PostProcessing.mergeParallelRegions(parallelizedLoops);
 }
+*/
