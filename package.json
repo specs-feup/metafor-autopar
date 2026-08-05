@@ -1,5 +1,20 @@
 {
+  "name": "@specs-feup/metafor-autopar",
+  "version": "0.0.1",
+  "author": "Afonso Osório",
+  "description": "Metafor package for automatic parallelization of DO loops.",
   "type": "module",
+  "files": [
+    "dist",
+    "fortran",    
+    "scripts",
+    "src",
+    ".gitignore",
+    "LICENSE",
+    "package-lock.json",
+    "package.json",
+    "tsconfig.json"
+  ],
   "dependencies": {
     "@specs-feup/lara": "~3.5.1",
     "@specs-feup/metafor": "~22.1.0",
