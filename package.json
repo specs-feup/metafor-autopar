@@ -1,8 +1,8 @@
 {
   "type": "module",
   "dependencies": {
-    "@specs-feup/lara": "/home/onso/specs/fortran-transpiler/Fortran-JS/node_modules/@specs-feup/lara",
-    "@specs-feup/metafor": "/home/onso/specs/fortran-transpiler/Fortran-JS",
+    "@specs-feup/lara": "~3.5.1",
+    "@specs-feup/metafor": "~22.1.0",
     "mathjs": "^15.2.0"
   },
   "devDependencies": {
