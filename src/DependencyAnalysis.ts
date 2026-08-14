@@ -66,7 +66,7 @@ export default class DependencyAnalysis {
                 const stmtJp = this.statements[parseInt(dep.source.slice(1)) - 1];
                 const operator = ISLLoopBuilder.isReductionCandidate(stmtJp as AssignmentStatement);
     
-                \\reduction check
+                // reduction check
                 if (operator && dep.sink === dep.source) {
                     if (!this.reductionPotentials.has(dep.var)) {
                         this.reductionPotentials.set(dep.var, {

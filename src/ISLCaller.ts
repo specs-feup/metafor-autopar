@@ -4,7 +4,7 @@ export default class ISLCaller {
     static async spawnPython(input: any) {
         return new Promise((resolve, reject) => {
             // Point this to your specific python executable/venv
-            const python = child_process.spawn('/home/onso/isl-script/bin/python3', ['/home/onso/isl-script/hmmm.py']);
+            const python = child_process.spawn('../isl-engine/venv/bin/python3', ['../isl-engine/script.py']);
     
             let outputData = '';
             let errorData = '';

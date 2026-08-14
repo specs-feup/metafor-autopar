@@ -79,8 +79,8 @@ export default class StencilAnalysis {
                     // NEEDED FOR POSSIBLE LLVM BUG
                     // const clamped = loopDist.map((d, idx) => (idx > 0 && d < 0 ? 0 : d));
                     
-                    if (!rawSinks.some(s => s.join(',') === clamped.join(','))) {
-                        rawSinks.push(clamped);
+                    if (!rawSinks.some(s => s.join(',') === loopDist.join(','))) {
+                        rawSinks.push(loopDist);
                     }
                     this.isParallel = false;
                     this.isOrdered = true;
