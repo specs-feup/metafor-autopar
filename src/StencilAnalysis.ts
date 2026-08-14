@@ -77,7 +77,7 @@ export default class StencilAnalysis {
                     if (loopDist[0] === 0) continue;
     
                     // NEEDED FOR POSSIBLE LLVM BUG
-                    const clamped = loopDist.map((d, idx) => (idx > 0 && d < 0 ? 0 : d));
+                    // const clamped = loopDist.map((d, idx) => (idx > 0 && d < 0 ? 0 : d));
                     
                     if (!rawSinks.some(s => s.join(',') === clamped.join(','))) {
                         rawSinks.push(clamped);
@@ -106,15 +106,13 @@ export default class StencilAnalysis {
     private filterRedundantSinks(rawSinks: number[][]) {
         if (!this.isOrdered || !rawSinks) return;
     
-        // Only prune if d1 and d2 target the same thread (d1[0] === d2[0])
         const filtered = rawSinks.filter((d2, i2) => {
             return !rawSinks.some((d1, i1) => {
                 if (i1 === i2) return false;
-                
-                // Only compare sinks from the same thread-level
+
                 if (d1[0] !== d2[0]) return false;
     
-                // Within the same thread level, keep the one that is 'closer' (lexicographically smaller)
+                //lexicographical comparison
                 for (let i = 0; i < d1.length; i++) {
                     if (d1[i]! < d2[i]!) return true; 
                     if (d1[i]! > d2[i]!) return false;
@@ -153,7 +151,6 @@ export default class StencilAnalysis {
         const pragma = FortranJoinPoints.emptyOmpLoopConstruct();
         const clauses: OmpClause[] = [];
 
-        // 1. Clauses
         for (const priv of this.privates) clauses.push(FortranJoinPoints.ompPrivateClause([FortranJoinPoints.dataRef(priv)]));
         for (const red of this.confirmedReductions) {
             const op = this.reductionPotentials.get(red)!.operator;

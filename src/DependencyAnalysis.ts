@@ -66,7 +66,7 @@ export default class DependencyAnalysis {
                 const stmtJp = this.statements[parseInt(dep.source.slice(1)) - 1];
                 const operator = ISLLoopBuilder.isReductionCandidate(stmtJp as AssignmentStatement);
     
-                // 1. Reduction Check (Highest Priority)
+                \\reduction check
                 if (operator && dep.sink === dep.source) {
                     if (!this.reductionPotentials.has(dep.var)) {
                         this.reductionPotentials.set(dep.var, {
@@ -82,28 +82,24 @@ export default class DependencyAnalysis {
                     continue;
                 }
     
-                // 2. Scalar Privatization Logic
-                // WAW/WAR on a scalar doesn't break parallelism; it just mandates 'private'
+                //scalars
                 if (isScalar && (dep.type === DepType.WAW || dep.type === DepType.WAR)) {
                     this.privates.add(dep.var);
                     continue; 
                 }
     
-                // 3. Parallelism Breaker
-                // If it's a RAW dependency (on scalar or array) or an array collision
                 this.isParallel = false;
                 console.log(`[DependencyAnalysis] Parallelism broken by ${dep.var} (${dep.type})`);
                 this.logDependency(dep);
     
             } else {
-                // Intra-iteration dependency: if it's a scalar, it must be private
                 if (isScalar) {
                     this.privates.add(dep.var);
                 }
             }
         }
     
-        // Final Validation of Reductions
+        //reduction validation
         for (const [varName, cond] of this.reductionPotentials.entries()) {
             const isScalar = this.scalars.includes(varName);
     
@@ -149,8 +145,6 @@ export default class DependencyAnalysis {
 
             this.jp.replaceWith(pragma);
             pragma.setLoop(tempJp);
-
-            //Insert "use omp_lib if absent"
 
             const programUnit = this.jp.getAncestor("programUnit") as ProgramUnit;
             let hasOmpLib = false;
