@@ -17,7 +17,7 @@
   ],
   "dependencies": {
     "@specs-feup/lara": "~3.5.1",
-    "@specs-feup/metafor": "^22.2.0",
+    "@specs-feup/metafor": "^22.2.1",
     "mathjs": "^15.2.0"
   },
   "devDependencies": {

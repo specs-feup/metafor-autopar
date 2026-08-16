@@ -1,10 +1,18 @@
 import child_process from 'child_process';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default class ISLCaller {
     static async spawnPython(input: any) {
         return new Promise((resolve, reject) => {
             // Point this to your specific python executable/venv
-            const python = child_process.spawn('../isl-engine/venv/bin/python3', ['../isl-engine/script.py']);
+            const pythonExe = path.join(__dirname, '../isl-engine/venv/bin/python3');
+            const scriptPath = path.join(__dirname, '../isl-engine/script.py');
+            const python = child_process.spawn(pythonExe, [scriptPath]);
+            //const python = child_process.spawn('../isl-engine/venv/bin/python3', ['../isl-engine/script.py']);
     
             let outputData = '';
             let errorData = '';
