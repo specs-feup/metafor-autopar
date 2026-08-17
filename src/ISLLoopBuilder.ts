@@ -217,6 +217,9 @@ export default class ISLLoopBuilder {
 
                 this.stmts.push(assignment);
             }
+            else {
+                console.warn(`[ISLLoopBuilder] Unsupported statement: ${stmt.code}. Statement will be ignored.`);
+            }
         }
 
         const writeVariables = this.writes.map(w => w.variable);
